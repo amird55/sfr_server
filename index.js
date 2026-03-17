@@ -4,7 +4,6 @@ process.env.TZ = "Asia/Jerusalem";
 const express = require('express');
 
 const port = 6127;
-// const port = 6565;
 const app = express();
 app.use(express.json());
 
