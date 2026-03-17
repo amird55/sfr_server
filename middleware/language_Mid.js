@@ -157,77 +157,6 @@ async function GetAllItems(req,res,next){
 
     next();
 }
-async function GetTimingsPlanCounts(req,res,next){
-    //NOTE: this should be called only after timing_Mid.GetTimingsOfUsers
-    let users_list = req.MyUsersIdList || [];
-    let dayOfReport = req.query.dayOfReport || GenObj_Mid.DateToNormalString(new Date());
-    if(users_list.length === 0){
-        res.ok = true;
-        return next();
-    }
-    const dayOfWeek = new Date(dayOfReport).getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-
-    // console.log("only_active=",only_active," req active=",req.query.only_active)
-    let values = [];
-    let Query = `SELECT tt.* `;
-    Query += ", COUNT(tt.trufa_id) as trufa_count";
-    // Query += ", COALESCE(DATEDIFF(?, DATE(uh.latest_taken)), -1) as days_since_latest";
-    // values.push(dayOfReport);
-    Query += ` FROM ${tableName} tt `;
-    Query += ` LEFT JOIN (`; // this is a subquery that returns the latest taken_time pill for each user, timing pair
-    Query += `   SELECT user_id, trufa_id, timing_id, MAX(taken_at) as latest_taken`;
-    Query += `   FROM user_history`;
-    Query += `   WHERE taken_at < ?`;
-    values.push(dayOfReport);
-    Query += `   GROUP BY user_id, trufa_id, timing_id`;
-    Query += ` ) uh ON tt.user_id = uh.user_id AND tt.trufa_id = uh.trufa_id AND tt.timing_id = uh.timing_id`;
-    Query += ` WHERE tt.user_id IN (?)`;
-    values.push(users_list);
-    Query += ` AND ((tt.start_date <= ?) OR (tt.start_date IS NULL))`;
-    Query += ` AND ((? <= tt.end_date) OR (tt.end_date IS NULL))`;
-    values.push(dayOfReport);
-    values.push(dayOfReport);
-    Query += ` AND (`;
-    Query += ` (tt.every_x_days = 1 ) `;
-    Query += ` OR`
-    Query += ` (tt.every_x_days > 1 `;
-    Query += `      AND (`;
-    Query += `           (tt.every_x_days <= COALESCE(DATEDIFF(?, DATE(uh.latest_taken)), -1))`;
-    values.push(dayOfReport);
-    Query += `            OR `;
-    Query += `             (uh.latest_taken IS NULL)`;
-    Query += `      )`;
-    Query += ` )`
-    Query += ` OR `;
-    Query += ` (tt.every_x_days=0 AND tt.days LIKE '%,?,%' )`;
-    values.push(dayOfWeek);
-    Query += ` )`;
-    Query += ` GROUP BY tt.user_id, tt.timing_id  `;
-    // console.log(Query,values)
-    // console.log(GenObj_Mid.formatSqlQuery(Query,values));
-
-    res.ok=false;
-    res.err="";
-    let rows= await GenObj_Mid.QueryExecSimpleReply(Query,values);
-    if(rows === false){
-        res.err="חלה תקלה, נא לנסות שנית";
-        return res.status(500).json({status:"ERROR",Query: Query,err:res.err,values:values});
-    }
-    res.ok=true;
-
-    // console.log(rows)
-    for(let row of rows){
-        if (req.TimingsOfUsers[row.user_id] === undefined){
-            req.TimingsOfUsers[row.user_id] = [];
-        }
-        if(req.TimingsOfUsers[row.user_id][row.timing_id] === undefined){
-            req.TimingsOfUsers[row.user_id][row.timing_id]={};
-        }
-        req.TimingsOfUsers[row.user_id][row.timing_id].pillsToTake=row.trufa_count;
-    }
-
-    next();
-}
 
 
 module.exports = {
@@ -235,5 +164,4 @@ module.exports = {
     UpdateItem,
     DeleteItem,
     GetAllItems,
-    GetTimingsPlanCounts,
 }
