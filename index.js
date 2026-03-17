@@ -18,6 +18,9 @@ global.db_pool = db_M.pool;
 
 global.GenObj_Mid = require("./middleware/GenObj_Mid");
 
+const main_api_R = require('./routers/main_api_R');
+app.use('/api', main_api_R);
+
 
 app.listen(port, () => {            //server starts listening for any attempts from a client to connect at port: {port}
     console.log(`Now listening on port http://localhost:${port}`);
